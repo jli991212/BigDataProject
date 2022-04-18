@@ -1,8 +1,10 @@
 from collections import defaultdict
-#from numpy import *
+from numpy import *
+import os
 import numpy as np
 import random
-from openml.runs.functions import format_prediction
+from Matrix import Matrix
+
 class ALS(object):
     def __init__(self):
         self.user_ids = None
@@ -52,7 +54,7 @@ class ALS(object):
 
         ret = [[f(users_row, item_id) for item_id in self.item_ids]
                for users_row in users.data]
-        return np.matrix(ret)
+        return Matrix(ret)
 
     def _items_mul_ratings(self, items, ratings):
         def f(items_row, user_id):
@@ -64,16 +66,16 @@ class ALS(object):
 
         ret = [[f(items_row, user_id) for user_id in self.user_ids]
                for items_row in items.data]
-        return np.matrix(ret)
+        return Matrix(ret)
 
     def _gen_random_matrix(self, n_rows, n_colums):
-        data = [[random() for _ in range(n_colums)] for _ in range(n_rows)]
-        return np.matrix(data)
+        data = [[random.random() for _ in range(n_colums)] for _ in range(n_rows)]
+        return Matrix(data)
 
     def _get_rmse(self, ratings):
         m, n = self.shape
         mse = 0.0
-        n_elements = sum(map(len, ratings.values()))
+        n_elements = sum(list(map(len, ratings.values())))
         for i in range(m):
             for j in range(n):
                 user_id = self.user_ids[i]
@@ -135,10 +137,33 @@ if __name__ == "__main__":
     def main():
         print("Tesing the accuracy of ALS...")
 
-        #X = load_movie_ratings()
-        X=1
+        os.chdir(os.path.split(os.path.realpath(__file__))[0])
+        BASE_PATH = os.path.abspath("..")
+        def load_movie_ratings():
+            """Load movie ratings data for recommedation.
+            Returns:
+                list -- userId, movieId, rating
+            """
+
+            file_name = "movie_ratings"
+            path = os.path.join(BASE_PATH, "GroupProject", "%s.csv" % file_name)
+            f = open(path)
+            lines = iter(f)
+            col_names = ", ".join(next(lines)[:-1].split(",")[:-1])
+            print("The column names are: %s." % col_names)
+            data = [[float(x) if i == 2 else int(x)
+                     for i, x in enumerate(line[:-1].split(",")[:-1])]
+                    for line in lines]
+            f.close()
+
+            return data
+
+        def format_prediction(item_id, score):
+            return "item_id:%d score:%.2f" % (item_id, score)
+        X = load_movie_ratings()
+        #X=1
         model = ALS()
-        #model.fit(X, k=3, max_iter=5)
+        model.fit(X, k=3, max_iter=5)
 
         print("Showing the predictions of users...")
 
