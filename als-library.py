@@ -139,20 +139,21 @@ if __name__ == "__main__":
 
         os.chdir(os.path.split(os.path.realpath(__file__))[0])
         BASE_PATH = os.path.abspath("..")
-        def load_movie_ratings():
-            """Load movie ratings data for recommedation.
+
+        def load_music_ratings():
+            """Load music artist ratings data for recommedation.
             Returns:
-                list -- userId, movieId, rating
+                list -- userId, itemId, rating
             """
 
-            file_name = "movie_ratings"
+            file_name = "yahoo-music"
             path = os.path.join(BASE_PATH, "GroupProject", "%s.csv" % file_name)
             f = open(path)
             lines = iter(f)
-            col_names = ", ".join(next(lines)[:-1].split(",")[:-1])
+            col_names = ", ".join(next(lines)[:-1].split(","))
             print("The column names are: %s." % col_names)
             data = [[float(x) if i == 2 else int(x)
-                     for i, x in enumerate(line[:-1].split(",")[:-1])]
+                     for i, x in enumerate(line[:-1].split(","))]
                     for line in lines]
             f.close()
 
@@ -160,14 +161,14 @@ if __name__ == "__main__":
 
         def format_prediction(item_id, score):
             return "item_id:%d score:%.2f" % (item_id, score)
-        X = load_movie_ratings()
+        X = load_music_ratings()
         #X=1
         model = ALS()
-        model.fit(X, k=3, max_iter=5)
-
+        model.fit(X, k=4, max_iter=5)
+        print(type(X))
         print("Showing the predictions of users...")
 
-        user_ids = range(1, 5)
+        user_ids = range(1, 10)
         predictions = model.predict(user_ids, n_items=2)
         for user_id, prediction in zip(user_ids, predictions):
             _prediction = [format_prediction(item_id, score)
