@@ -3,176 +3,100 @@ from itertools import product, chain
 from copy import deepcopy
 
 
-class Matrix(object):
-    def __init__(self, data):
-        self.data = data
-        self.shape = (len(data), len(data[0]))
+class ALS_Matrix(object):
+    def __init__(self, inputdata):
+        self.inputdata = inputdata
+        self.shape = (len(inputdata), len(inputdata[0]))
 
     def row(self, row_no):
+        return ALS_Matrix([self.inputdata[row_no]])
 
-
-        return Matrix([self.data[row_no]])
-
-    def col(self, col_no):
+    def column(self, column_no):
 
         m = self.shape[0]
-        return Matrix([[self.data[i][col_no]] for i in range(m)])
+        return ALS_Matrix([[self.inputdata[i][column_no]] for i in range(m)])
 
     @property
     def is_square(self):
-        """Check if the matrix is a square matrix.
-        Returns:
-            bool
-        """
-
         return self.shape[0] == self.shape[1]
 
     @property
     def transpose(self):
-        """Find the transpose of the original matrix.
-        Returns:
-            Matrix
-        """
-
-        data = list(map(list, zip(*self.data)))
-        return Matrix(data)
+        inputdata = list(map(list, zip(*self.inputdata)))
+        return ALS_Matrix(inputdata)
 
     def _eye(self, n):
-        """Get a unit matrix with shape (n, n).
-        Arguments:
-            n {int} -- Rank of unit matrix.
-        Returns:
-            list
-        """
-
-        return [[0 if i != j else 1 for j in range(n)] for i in range(n)]
+       return [[0 if a != b else 1 for b in range(n)] for a in range(n)]
 
     @property
     def eye(self):
-        """Get a unit matrix with the same shape of self.
-        Returns:
-            Matrix
-        """
+        assert self.is_square, "matrix need to square "
+        inputdata = self._eye(self.shape[0])
+        return ALS_Matrix(inputdata)
 
-        assert self.is_square, "The matrix has to be square!"
-        data = self._eye(self.shape[0])
-        return Matrix(data)
+    def _gaussian_elimination(self, my_matrix):
 
-    def _gaussian_elimination(self, aug_matrix):
-        """To simplify the left square matrix of the augmented matrix
-        as a unit diagonal matrix.
-        Arguments:
-            aug_matrix {list} -- 2d list with int or float.
-        Returns:
-            list -- 2d list with int or float.
-        """
+        n = len(my_matrix)
+        m = len(my_matrix[0])
 
-        n = len(aug_matrix)
-        m = len(aug_matrix[0])
-
-        # From top to bottom.
-        for col_idx in range(n):
-            # Check if element on the diagonal is zero.
-            if aug_matrix[col_idx][col_idx] == 0:
-                row_idx = col_idx
-                # Find a row whose element has same column index with
-                # the element on the diagonal is not zero.
-                while row_idx < n and aug_matrix[row_idx][col_idx] == 0:
+        for column_idx in range(n):
+            if my_matrix[column_idx][column_idx] == 0:
+                row_idx = column_idx
+                while row_idx < n and my_matrix[row_idx][column_idx] == 0:
                     row_idx += 1
-                # Add this row to the row of the element on the diagonal.
-                for i in range(col_idx, m):
-                    aug_matrix[col_idx][i] += aug_matrix[row_idx][i]
+                for i in range(column_idx, m):
+                    my_matrix[column_idx][i] += my_matrix[row_idx][i]
 
-            # Elimiate the non-zero element.
-            for i in range(col_idx + 1, n):
-                # Skip the zero element.
-                if aug_matrix[i][col_idx] == 0:
+            for i in range(column_idx + 1, n):
+                if my_matrix[i][column_idx] == 0:
                     continue
-                # Elimiate the non-zero element.
-                k = aug_matrix[i][col_idx] / aug_matrix[col_idx][col_idx]
-                for j in range(col_idx, m):
-                    aug_matrix[i][j] -= k * aug_matrix[col_idx][j]
+                k = my_matrix[i][column_idx] / my_matrix[column_idx][column_idx]
+                for j in range(column_idx, m):
+                    my_matrix[i][j] -= k * my_matrix[column_idx][j]
 
-        # From bottom to top.
-        for col_idx in range(n - 1, -1, -1):
-            # Elimiate the non-zero element.
-            for i in range(col_idx):
-                # Skip the zero element.
-                if aug_matrix[i][col_idx] == 0:
+        for column_idx in range(n - 1, -1, -1):
+            for i in range(column_idx):
+                if my_matrix[i][column_idx] == 0:
                     continue
-                # Elimiate the non-zero element.
-                k = aug_matrix[i][col_idx] / aug_matrix[col_idx][col_idx]
-                for j in chain(range(i, col_idx + 1), range(n, m)):
-                    aug_matrix[i][j] -= k * aug_matrix[col_idx][j]
+                k = my_matrix[i][column_idx] / my_matrix[column_idx][column_idx]
+                for j in chain(range(i, column_idx + 1), range(n, m)):
+                    my_matrix[i][j] -= k * my_matrix[column_idx][j]
 
-        # Iterate the element on the diagonal.
         for i in range(n):
-            k = 1 / aug_matrix[i][i]
-            aug_matrix[i][i] *= k
+            k = 1 / my_matrix[i][i]
+            my_matrix[i][i] *= k
             for j in range(n, m):
-                aug_matrix[i][j] *= k
+                my_matrix[i][j] *= k
 
-        return aug_matrix
+        return my_matrix
 
-    def _inverse(self, data):
-        """Find the inverse of a matrix.
-        Arguments:
-            data {list} -- 2d list with int or float.
-        Returns:
-            list -- 2d list with int or float.
-        """
-
-        n = len(data)
+    def _inverse(self, inputdata):
+        n = len(inputdata)
         unit_matrix = self._eye(n)
-        aug_matrix = [a + b for a, b in zip(self.data, unit_matrix)]
-        ret = self._gaussian_elimination(aug_matrix)
+        my_matrix = [x + y for x, y in zip(self.inputdata, unit_matrix)]
+        ret = self._gaussian_elimination(my_matrix)
         return list(map(lambda x: x[n:], ret))
 
     @property
     def inverse(self):
-        """Find the inverse matrix of self.
-        Returns:
-            Matrix
-        """
 
-        assert self.is_square, "The matrix has to be square!"
-        data = self._inverse(self.data)
-        return Matrix(data)
+        assert self.is_square, "matrix is square now!"
+        inputdata = self._inverse(self.inputdata)
+        return ALS_Matrix(inputdata)
 
-    def _row_mul(self, row_A, row_B):
-        """Multiply the elements with the same subscript in both arrays and sum them.
-        Arguments:
-            row_A {list} -- 1d list with float or int.
-            row_B {list} -- 1d list with float or int.
-        Returns:
-            float or int
-        """
+    def _row_mul(self, row1, row2):
 
-        return sum(x[0] * x[1] for x in zip(row_A, row_B))
+        return sum(x[0] * x[1] for x in zip(row1, row2))
 
-    def _mat_mul(self, row_A, B):
-        """An auxiliary function of the mat_mul function.
-        Arguments:
-            row_A {list} -- 1d list with float or int.
-            B {Matrix}
-        Returns:
-            list -- 1d list with float or int.
-        """
-
-        row_pairs = product([row_A], B.transpose.data)
+    def _matrix_mul(self, row, mat):
+        row_pairs = product([row], mat.transpose.inputdata)
         return [self._row_mul(*row_pair) for row_pair in row_pairs]
 
-    def mat_mul(self, B):
-        """Matrix multiplication.
-        Arguments:
-            B {Matrix}
-        Returns:
-            Matrix
-        """
+    def matrix_mul(self, mat):
 
-        error_msg = "A's column count does not match B's row count!"
-        assert self.shape[1] == B.shape[0], error_msg
-        return Matrix([self._mat_mul(row_A, B) for row_A in self.data])
+        error_msg = "two matrix coulmns number not match"
+        assert self.shape[1] == mat.shape[0], error_msg
+        return ALS_Matrix([self._matrix_mul(row, mat) for row in self.inputdata])
 
 
 
